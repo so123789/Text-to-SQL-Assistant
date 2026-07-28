@@ -1,13 +1,16 @@
 const initSqlJs = require("sql.js");
-
+const path = require("path");
 let SQL = null;         // sql.js engine (loaded once)
 let db = null;          // active database
 let dbMode = "demo";    // "demo" | "uploaded"
 
 // ─── Engine init ────────────────────────────────────────────────────────────
 
+
 async function getSQLEngine() {
-  if (!SQL) SQL = await initSqlJs();
+  if (!SQL) SQL = await initSqlJs({
+    locateFile: () => path.join(__dirname, "../../node_modules/sql.js/dist/sql-wasm.wasm")
+  });
   return SQL;
 }
 
