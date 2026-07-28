@@ -34,6 +34,16 @@ app.use("/api/history", historyRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/upload", uploadRoutes);
 
+const path = require("path");
+
+// Serve built frontend in production
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
+  });
+}
+
 app.use((req, res) => res.status(404).json({ error: "Route not found" }));
 
 app.use((err, req, res, next) => {
