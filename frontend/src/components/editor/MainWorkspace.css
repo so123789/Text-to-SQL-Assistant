@@ -77,7 +77,8 @@
 
 /* Editor section */
 .editor-section {
-  flex: 0 0 280px;
+  flex: 1 1 0;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
   border-bottom: 1px solid var(--border);
@@ -168,14 +169,69 @@
 
 /* Results section */
 .results-section {
-  flex: 1;
+  position: relative;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-height: 38px;
+  transition: height 0.18s ease;
 }
+.workspace.is-resizing .results-section { transition: none; }
+.workspace.is-resizing { cursor: row-resize; user-select: none; }
+.workspace.is-resizing .monaco-wrap { pointer-events: none; }
+
+/* Drag handle on the panel's top edge (like the VS Code panel sash) */
+.resize-handle {
+  position: absolute;
+  top: -5px;
+  left: 0;
+  right: 0;
+  height: 10px;
+  z-index: 20;
+  cursor: row-resize;
+  touch-action: none;
+}
+.resize-handle::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: 3px;
+  width: 36px; height: 4px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: var(--text-muted);
+  opacity: 0.45;
+  transition: opacity 0.15s, background 0.15s;
+}
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 4px;
+  height: 2px;
+  background: transparent;
+  transition: background 0.15s;
+}
+.resize-handle:hover::before,
+.workspace.is-resizing .resize-handle::before { background: var(--accent); opacity: 1; }
+.resize-handle:hover::after,
+.workspace.is-resizing .resize-handle::after { background: var(--accent); }
+
+.panel-toggle {
+  margin-left: auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+}
+.panel-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.results-section.collapsed .results-tabs { border-bottom: none; }
 
 .results-tabs {
   display: flex;
+  flex: 0 0 auto;
+  overflow-x: auto;
   border-bottom: 1px solid var(--border);
   background: var(--bg-surface);
   padding: 0 16px;
@@ -195,4 +251,22 @@
 .results-body {
   flex: 1;
   overflow: auto;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .question-bar { padding: 12px; }
+  .editor-toolbar { flex-wrap: wrap; gap: 6px; padding: 6px 12px; }
+  .toolbar-actions { flex-wrap: wrap; }
+  .results-tabs { padding: 0 8px; }
+}
+
+@media (max-width: 600px) {
+  .question-input-wrap { flex-wrap: wrap; }
+  .question-input { min-width: 0; flex: 1 1 140px; }
+  .btn-generate { width: 100%; }
+  .sample-questions { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .sample-chip { white-space: nowrap; flex: 0 0 auto; }
+  .toolbar-btn { padding: 5px 8px; }
+  .results-tab { padding: 10px; white-space: nowrap; }
 }

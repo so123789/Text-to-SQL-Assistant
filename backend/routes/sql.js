@@ -1,8 +1,17 @@
 const express = require("express");
 const router = express.Router();
-const { generateSQL, explainSQL, fixSQL, optimizeSQL } = require("../services/groqService");
+const { generateSQL, explainSQL, fixSQL, optimizeSQL } = require("../services/claudeService");
 const { executeQuery } = require("../services/sqliteService");
 const { addEntry } = require("../services/historyService");
+
+const ALLOWED_DIALECTS = ["SQLite", "PostgreSQL", "MySQL", "SQL Server"];
+const MAX_QUESTION_LENGTH = 1000;
+const MAX_SQL_LENGTH = 8000;
+const MAX_ERROR_LENGTH = 2000;
+
+function validateDialect(dialect) {
+  return ALLOWED_DIALECTS.includes(dialect) ? dialect : "SQLite";
+}
 
 /**
  * POST /api/sql/generate
@@ -11,10 +20,14 @@ const { addEntry } = require("../services/historyService");
  */
 router.post("/generate", async (req, res, next) => {
   try {
-    const { question, schema, dialect = "SQLite", conversationHistory = [] } = req.body;
+    const { question, schema, conversationHistory = [] } = req.body;
+    const dialect = validateDialect(req.body.dialect);
 
     if (!question?.trim()) {
       return res.status(400).json({ error: "question is required." });
+    }
+    if (question.length > MAX_QUESTION_LENGTH) {
+      return res.status(400).json({ error: `question must be under ${MAX_QUESTION_LENGTH} characters.` });
     }
 
     const result = await generateSQL({ question, schema, dialect, conversationHistory });
@@ -31,7 +44,8 @@ router.post("/generate", async (req, res, next) => {
  */
 router.post("/execute", async (req, res, next) => {
   try {
-    const { sql, question, schema, dialect = "SQLite", conversationHistory = [] } = req.body;
+    const { sql, question, schema, conversationHistory = [] } = req.body;
+    const dialect = validateDialect(req.body.dialect);
 
     let finalSQL = sql;
 
@@ -43,6 +57,9 @@ router.post("/execute", async (req, res, next) => {
 
     if (!finalSQL?.trim()) {
       return res.status(400).json({ error: "sql or question is required." });
+    }
+    if (finalSQL.length > MAX_SQL_LENGTH) {
+      return res.status(400).json({ error: `sql must be under ${MAX_SQL_LENGTH} characters.` });
     }
 
     let queryResult, error;
@@ -78,8 +95,12 @@ router.post("/execute", async (req, res, next) => {
  */
 router.post("/explain", async (req, res, next) => {
   try {
-    const { sql, schema, dialect = "SQLite" } = req.body;
+    const { sql, schema } = req.body;
+    const dialect = validateDialect(req.body.dialect);
     if (!sql?.trim()) return res.status(400).json({ error: "sql is required." });
+    if (sql.length > MAX_SQL_LENGTH) {
+      return res.status(400).json({ error: `sql must be under ${MAX_SQL_LENGTH} characters.` });
+    }
 
     const explanation = await explainSQL({ sql, schema, dialect });
     res.json({ explanation });
@@ -94,9 +115,13 @@ router.post("/explain", async (req, res, next) => {
  */
 router.post("/fix", async (req, res, next) => {
   try {
-    const { sql, error, schema, dialect = "SQLite" } = req.body;
+    const { sql, error, schema } = req.body;
+    const dialect = validateDialect(req.body.dialect);
     if (!sql?.trim() || !error?.trim()) {
       return res.status(400).json({ error: "sql and error are required." });
+    }
+    if (sql.length > MAX_SQL_LENGTH || error.length > MAX_ERROR_LENGTH) {
+      return res.status(400).json({ error: "sql or error message is too long." });
     }
 
     const fixedSQL = await fixSQL({ sql, error, schema, dialect });
@@ -112,8 +137,12 @@ router.post("/fix", async (req, res, next) => {
  */
 router.post("/optimize", async (req, res, next) => {
   try {
-    const { sql, schema, dialect = "SQLite" } = req.body;
+    const { sql, schema } = req.body;
+    const dialect = validateDialect(req.body.dialect);
     if (!sql?.trim()) return res.status(400).json({ error: "sql is required." });
+    if (sql.length > MAX_SQL_LENGTH) {
+      return res.status(400).json({ error: `sql must be under ${MAX_SQL_LENGTH} characters.` });
+    }
 
     const result = await optimizeSQL({ sql, schema, dialect });
     res.json(result);

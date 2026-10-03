@@ -38,4 +38,8 @@ export const uploadApi = {
   status: () => api.get("/upload/status"),
 };
 
+export const healthApi = {
+  get: () => api.get("/health"),
+};
+
 export default api;

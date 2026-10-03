@@ -1,9 +1,14 @@
 const initSqlJs = require("sql.js");
 const path = require("path");
+const fs = require("fs");
 
 let SQL = null;
 let db = null;
 let dbMode = "demo";
+
+const DB_DIR = path.join(__dirname, "../db");
+const DEMO_DB_PATH = path.join(DB_DIR, "demo.db");
+const UPLOADED_DB_PATH = path.join(DB_DIR, "uploaded.db");
 
 // -------------------- SQL Engine --------------------
 
@@ -24,16 +29,49 @@ async function getSQLEngine() {
   return SQL;
 }
 
+/**
+ * Persist the in-memory database to disk so data survives server restarts.
+ * Silent no-op on failure (e.g. read-only filesystem) — persistence is a
+ * convenience, not a requirement for the app to function.
+ */
+function persist() {
+  if (!db) return;
+  try {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+    const targetPath = dbMode === "uploaded" ? UPLOADED_DB_PATH : DEMO_DB_PATH;
+    const data = db.export();
+    fs.writeFileSync(targetPath, Buffer.from(data));
+  } catch (err) {
+    console.error("[sqliteService] Failed to persist database:", err.message);
+  }
+}
+
+/**
+ * On first access, restore whichever database was active when the server
+ * last ran: an uploaded database takes priority, otherwise the demo DB
+ * (loading it from disk if present, or seeding + saving a fresh copy).
+ */
 async function getDb() {
   if (db) return db;
 
   const engine = await getSQLEngine();
 
+  if (fs.existsSync(UPLOADED_DB_PATH)) {
+    db = new engine.Database(new Uint8Array(fs.readFileSync(UPLOADED_DB_PATH)));
+    dbMode = "uploaded";
+    return db;
+  }
+
+  if (fs.existsSync(DEMO_DB_PATH)) {
+    db = new engine.Database(new Uint8Array(fs.readFileSync(DEMO_DB_PATH)));
+    dbMode = "demo";
+    return db;
+  }
+
   db = new engine.Database();
-
   seedDemoData(db);
-
   dbMode = "demo";
+  persist();
 
   return db;
 }
@@ -46,6 +84,7 @@ async function loadSQLiteFile(buffer) {
   db = new engine.Database(new Uint8Array(buffer));
 
   dbMode = "uploaded";
+  persist();
 
   return getDemoSchema();
 }
@@ -102,6 +141,8 @@ async function loadCSVFiles(csvFiles) {
     }
   }
 
+  persist();
+
   return getDemoSchema();
 }
 
@@ -113,6 +154,7 @@ async function loadSQLDump(sqlText) {
   db.run(sqlText);
 
   dbMode = "uploaded";
+  persist();
 
   return getDemoSchema();
 }
@@ -120,9 +162,20 @@ async function loadSQLDump(sqlText) {
 async function resetToDemo() {
   const engine = await getSQLEngine();
 
-  db = new engine.Database();
+  // Drop any persisted uploaded database — the demo DB becomes current again.
+  try {
+    if (fs.existsSync(UPLOADED_DB_PATH)) fs.unlinkSync(UPLOADED_DB_PATH);
+  } catch (err) {
+    console.error("[sqliteService] Failed to remove uploaded database:", err.message);
+  }
 
-  seedDemoData(db);
+  if (fs.existsSync(DEMO_DB_PATH)) {
+    db = new engine.Database(new Uint8Array(fs.readFileSync(DEMO_DB_PATH)));
+  } else {
+    db = new engine.Database();
+    seedDemoData(db);
+    persist();
+  }
 
   dbMode = "demo";
 
@@ -133,27 +186,69 @@ function getCurrentMode() {
   return dbMode;
 }
 
+// -------------------- Query Execution --------------------
+
+const DESTRUCTIVE_KEYWORDS = ["DROP", "TRUNCATE", "ALTER", "ATTACH", "DETACH", "VACUUM", "REINDEX"];
+
+/**
+ * Reject anything that looks like more than one SQL statement. This is a
+ * conservative heuristic (it doesn't parse string literals), which is fine
+ * here since it can only make the check stricter, never let something slip
+ * through — a semicolon inside a quoted string will just cause an
+ * occasional false "multiple statements" rejection, not a security gap.
+ */
+function hasMultipleStatements(sql) {
+  const withoutTrailing = sql.trim().replace(/;\s*$/, "");
+  return withoutTrailing.includes(";");
+}
+
+function assertSafeToExecute(sql) {
+  const trimmed = sql.trim();
+  const normalized = trimmed.toUpperCase();
+
+  if (hasMultipleStatements(trimmed)) {
+    throw new Error("Only a single SQL statement can be run at a time.");
+  }
+
+  const firstWord = normalized.split(/\s+/)[0];
+  if (DESTRUCTIVE_KEYWORDS.includes(firstWord)) {
+    throw new Error(`${firstWord} statements are disabled for safety.`);
+  }
+
+  if (firstWord === "DELETE" && !normalized.includes("WHERE")) {
+    throw new Error("DELETE without a WHERE clause is disabled — it would remove every row.");
+  }
+
+  if (firstWord === "UPDATE" && !normalized.includes("WHERE")) {
+    throw new Error("UPDATE without a WHERE clause is disabled — it would modify every row.");
+  }
+
+  if (firstWord === "PRAGMA" && /WRITABLE_SCHEMA|JOURNAL_MODE\s*=/.test(normalized)) {
+    throw new Error("This PRAGMA statement is disabled for safety.");
+  }
+}
+
 async function executeQuery(sql) {
+  if (!sql?.trim()) {
+    throw new Error("No SQL provided.");
+  }
+
+  assertSafeToExecute(sql);
+
   const database = await getDb();
 
   const start = Date.now();
 
   const normalized = sql.trim().toUpperCase();
+  const isWrite = /^(INSERT|UPDATE|DELETE|CREATE|REPLACE)/.test(normalized);
 
-  if (
-    normalized.startsWith("DROP") ||
-    normalized.startsWith("TRUNCATE") ||
-    (normalized.startsWith("DELETE") &&
-      !normalized.includes("WHERE"))
-  ) {
-    throw new Error(
-      "Destructive queries without WHERE are disabled."
-    );
-  }
-
-  const result = database.exec(sql.replace(/;$/, ""));
+  const result = database.exec(sql.replace(/;\s*$/, ""));
 
   const executionTime = Date.now() - start;
+
+  if (isWrite) {
+    persist();
+  }
 
   const { columns, rows } = resultToObjects(result);
 

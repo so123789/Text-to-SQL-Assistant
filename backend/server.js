@@ -21,14 +21,26 @@ app.use(morgan(isProd ? "combined" : "dev"));
 app.use(cors({ origin: isProd ? false : ["http://localhost:5173", "http://localhost:3000"] }));
 app.use(express.json({ limit: "2mb" }));
 
-const limiter = rateLimit({
+// Stricter limiter for the Claude-backed SQL endpoints (they cost API quota).
+const sqlLimiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000,
   max:      Number(process.env.RATE_LIMIT_MAX) || 30,
   standardHeaders: true,
   legacyHeaders:   false,
   message: { error: "Too many requests — please wait a moment." },
 });
-app.use("/api/sql", limiter);
+
+// Looser limiter for upload (large payloads, no LLM cost, but still worth capping).
+const uploadLimiter = rateLimit({
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000,
+  max:      Number(process.env.UPLOAD_RATE_LIMIT_MAX) || 20,
+  standardHeaders: true,
+  legacyHeaders:   false,
+  message: { error: "Too many uploads — please wait a moment." },
+});
+
+app.use("/api/sql", sqlLimiter);
+app.use("/api/upload", uploadLimiter);
 
 app.use("/api/sql",     sqlRoutes);
 app.use("/api/schema",  schemaRoutes);
@@ -54,5 +66,6 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`\n🚀 Server on port ${PORT} [${isProd ? "production" : "development"}]`);
-  console.log(`   Groq key: ${process.env.GROQ_API_KEY ? "✅ loaded" : "❌ MISSING"}\n`);
+  const hasClaudeKey = !!(process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY);
+  console.log(`   Claude key: ${hasClaudeKey ? "✅ loaded" : "❌ MISSING"}\n`);
 });

@@ -1,7 +1,7 @@
 {
   "name": "ai-sql-assistant",
   "version": "1.0.0",
-  "description": "AI-powered SQL Assistant using Groq LLM",
+  "description": "AI-powered SQL Assistant using Claude LLM",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
