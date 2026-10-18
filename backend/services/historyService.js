@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("node:crypto");
 
 const HISTORY_FILE = path.join(__dirname, "../db/history.json");
 
@@ -23,7 +23,7 @@ function saveHistory(history) {
 function addEntry({ question, sql, dialect, rowCount, executionTime, error }) {
   const history = loadHistory();
   const entry = {
-    id: uuidv4(),
+    id: randomUUID(),
     question,
     sql,
     dialect,

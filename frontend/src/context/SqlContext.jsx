@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { schemaApi } from "../utils/api";
+import { uploadApi } from "../utils/api";
 
 const SqlContext = createContext(null);
 
@@ -11,10 +11,13 @@ export function SqlProvider({ children }) {
   const [queryResult, setQueryResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [schemaLoading, setSchemaLoading] = useState(true);
+  // Keeps a browser-memory reference to a single CSV selected in SQL mode so
+  // Investigation mode can offer it without asking the user to browse again.
+  const [investigationCandidate, setInvestigationCandidate] = useState(null);
 
-  // Load demo schema on mount
+  // A full page reload starts a fresh SQL session and discards prior uploads.
   useEffect(() => {
-    schemaApi.getDemo()
+    uploadApi.reset()
       .then(({ schema }) => setSchema(schema))
       .catch(console.error)
       .finally(() => setSchemaLoading(false));
@@ -36,6 +39,7 @@ export function SqlProvider({ children }) {
       queryResult, setQueryResult,
       isLoading, setIsLoading,
       schemaLoading,
+      investigationCandidate, setInvestigationCandidate,
     }}>
       {children}
     </SqlContext.Provider>

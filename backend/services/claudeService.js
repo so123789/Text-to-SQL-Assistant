@@ -48,12 +48,12 @@ function extractUsage(response) {
  * into messages that are safe and useful to show a user — never leaking
  * the API key or raw stack traces.
  */
-async function callClaude(params) {
+async function callClaude(params, options = {}) {
   if (!apiKey) {
     throw new Error("Claude API key is not configured on the server. Set CLAUDE_API_KEY in backend/.env.");
   }
   try {
-    return await anthropic.messages.create(params);
+    return await anthropic.messages.create(params, options);
   } catch (err) {
     const status = err?.status;
     console.error(`[Claude] ${status ?? "network"} ${err?.message ?? err}`);
@@ -256,4 +256,12 @@ Respond in valid JSON format only (no explanation outside JSON):
   }
 }
 
-module.exports = { generateSQL, explainSQL, fixSQL, optimizeSQL };
+module.exports = {
+  generateSQL,
+  explainSQL,
+  fixSQL,
+  optimizeSQL,
+  createClaudeMessage: callClaude,
+  extractUsage,
+  MODEL,
+};

@@ -1,6 +1,23 @@
 .app-shell {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   overflow: hidden;
   background: var(--bg-deep);
 }
+.app-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+.app-body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 75% -20%, var(--accent-dim), transparent 34%);
+  opacity: .7;
+}
+.app-body > * { position: relative; z-index: 1; }

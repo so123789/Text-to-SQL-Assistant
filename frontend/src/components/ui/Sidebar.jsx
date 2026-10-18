@@ -1,46 +1,28 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Database, History, ChevronRight, ChevronDown, Table2, Hash, Upload, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSql } from "../../context/SqlContext";
-import { historyApi, healthApi } from "../../utils/api";
+import { historyApi } from "../../utils/api";
 import UploadDB from "./UploadDB";
-import ThemeSwitcher from "./ThemeSwitcher";
 import "./Sidebar.css";
 
-/** Turn a raw model id like "claude-sonnet-4-5-20250929" into "Claude Sonnet 4.5". */
-function formatModelName(modelId) {
-  if (!modelId) return "Claude";
-  const match = modelId.match(/^claude-([a-z]+)-(\d+)-(\d+)/);
-  if (!match) return modelId;
-  const [, family, major, minor] = match;
-  const label = family.charAt(0).toUpperCase() + family.slice(1);
-  return `Claude ${label} ${major}.${minor}`;
-}
-
-export default function Sidebar() {
+export default function Sidebar({ onInvestigate }) {
   const { schema, schemaLoading, dialect, setDialect } = useSql();
   const [activeTab, setActiveTab] = useState("schema");
   const [expandedTables, setExpandedTables] = useState({});
   const [showUpload, setShowUpload] = useState(false);
-  const [modelLabel, setModelLabel] = useState(null);
 
   const toggleTable = (name) =>
     setExpandedTables((prev) => ({ ...prev, [name]: !prev[name] }));
-
-  useEffect(() => {
-    healthApi.get()
-      .then((data) => setModelLabel(formatModelName(data.model)))
-      .catch(() => setModelLabel(null));
-  }, []);
 
   return (
     <>
       <aside className="sidebar">
         {/* Header */}
         <div className="sidebar-header">
-          <div className="sidebar-logo">
-            <span className="logo-icon">⚡</span>
-            <span className="logo-text">SQL<span className="logo-accent">AI</span></span>
+          <div className="workspace-label">
+            <strong>SQL Workspace</strong>
+            <span>Schema and history</span>
           </div>
           <select
             className="dialect-select"
@@ -88,17 +70,15 @@ export default function Sidebar() {
           )}
           {activeTab === "history" && <HistoryPanel />}
         </div>
-
-        {/* Footer — theme switcher + model badge */}
-        <div className="sidebar-footer">
-          <ThemeSwitcher />
-          <span className="model-badge" title="Powered by Anthropic Claude">
-            {modelLabel || "…"}
-          </span>
-        </div>
       </aside>
 
-      {showUpload && <UploadDB onClose={() => setShowUpload(false)} />}
+      {showUpload && <UploadDB
+        onClose={() => setShowUpload(false)}
+        onInvestigate={() => {
+          setShowUpload(false);
+          onInvestigate();
+        }}
+      />}
     </>
   );
 }

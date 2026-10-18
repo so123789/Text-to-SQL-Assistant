@@ -22,8 +22,8 @@
 
 .theme-dropdown {
   position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
+  top: calc(100% + 8px);
+  right: 0;
   background: var(--bg-surface);
   border: 1px solid var(--border-lit);
   border-radius: var(--radius);
@@ -35,7 +35,7 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 

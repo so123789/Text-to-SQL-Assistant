@@ -1,12 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import { Toaster } from "react-hot-toast";
 import { SqlProvider } from "./context/SqlContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import Sidebar from "./components/ui/Sidebar";
 import MainWorkspace from "./components/editor/MainWorkspace";
+import InvestigationWorkspace from "./components/investigation/InvestigationWorkspace";
+import TopNav from "./components/ui/TopNav";
 import "./App.css";
 
 export default function App() {
+  const [mode, setMode] = useState("sql");
   return (
     <ThemeProvider>
       <SqlProvider>
@@ -25,8 +28,11 @@ export default function App() {
           }}
         />
         <div className="app-shell">
-          <Sidebar />
-          <MainWorkspace />
+          <TopNav mode={mode} setMode={setMode} />
+          <div className="app-body">
+            {mode === "sql" && <Sidebar onInvestigate={() => setMode("investigation")} />}
+            {mode === "sql" ? <MainWorkspace /> : <InvestigationWorkspace />}
+          </div>
         </div>
       </SqlProvider>
     </ThemeProvider>
