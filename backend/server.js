@@ -11,6 +11,7 @@ const schemaRoutes  = require("./routes/schema");
 const historyRoutes = require("./routes/history");
 const healthRoutes  = require("./routes/health");
 const uploadRoutes  = require("./routes/upload");
+const { createInvestigationRouter } = require("./routes/investigation");
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -39,6 +40,14 @@ const uploadLimiter = rateLimit({
   message: { error: "Too many uploads — please wait a moment." },
 });
 
+const investigationAgentLimiter = rateLimit({
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000,
+  max: Number(process.env.INVESTIGATION_AGENT_RATE_LIMIT_MAX) || 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many investigations — please wait a moment." },
+});
+
 app.use("/api/sql", sqlLimiter);
 app.use("/api/upload", uploadLimiter);
 
@@ -47,6 +56,8 @@ app.use("/api/schema",  schemaRoutes);
 app.use("/api/history", historyRoutes);
 app.use("/api/health",  healthRoutes);
 app.use("/api/upload",  uploadRoutes);
+app.use("/api/investigation/datasets/:id/investigate", investigationAgentLimiter);
+app.use("/api/investigation", uploadLimiter, createInvestigationRouter());
 
 // Serve built React app in production
 if (isProd) {

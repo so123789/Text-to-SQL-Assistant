@@ -38,6 +38,48 @@ export const uploadApi = {
   status: () => api.get("/upload/status"),
 };
 
+function investigationSession() {
+  const key = "sqlassist.investigationSession";
+  let token = sessionStorage.getItem(key);
+  if (!token) {
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    sessionStorage.setItem(key, token);
+  }
+  return token;
+}
+
+async function investigationRequest(path, options = {}) {
+  const response = await fetch(`/api/investigation${path}`, {
+    ...options,
+    headers: { ...options.headers, "X-Investigation-Session": investigationSession() },
+  });
+  if (response.status === 204) return null;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+
+export const investigationApi = {
+  upload: (file) => {
+    const body = new FormData();
+    body.append("file", file);
+    return investigationRequest("/datasets", { method: "POST", body });
+  },
+  get: (id) => investigationRequest(`/datasets/${encodeURIComponent(id)}`),
+  query: (id, sql) => investigationRequest(`/datasets/${encodeURIComponent(id)}/query`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sql }),
+  }),
+  investigate: (id, payload) => investigationRequest(`/datasets/${encodeURIComponent(id)}/investigate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }),
+  delete: (id) => investigationRequest(`/datasets/${encodeURIComponent(id)}`, { method: "DELETE" }),
+};
+
 export const healthApi = {
   get: () => api.get("/health"),
 };

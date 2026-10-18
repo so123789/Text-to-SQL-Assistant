@@ -30,37 +30,26 @@ async function getSQLEngine() {
 }
 
 /**
- * Persist the in-memory database to disk so data survives server restarts.
- * Silent no-op on failure (e.g. read-only filesystem) — persistence is a
- * convenience, not a requirement for the app to function.
+ * Persist only the built-in demo database. User uploads stay temporary.
  */
 function persist() {
-  if (!db) return;
+  if (!db || dbMode !== "demo") return;
   try {
     fs.mkdirSync(DB_DIR, { recursive: true });
-    const targetPath = dbMode === "uploaded" ? UPLOADED_DB_PATH : DEMO_DB_PATH;
     const data = db.export();
-    fs.writeFileSync(targetPath, Buffer.from(data));
+    fs.writeFileSync(DEMO_DB_PATH, Buffer.from(data));
   } catch (err) {
     console.error("[sqliteService] Failed to persist database:", err.message);
   }
 }
 
 /**
- * On first access, restore whichever database was active when the server
- * last ran: an uploaded database takes priority, otherwise the demo DB
- * (loading it from disk if present, or seeding + saving a fresh copy).
+ * On first access, restore the demo database. Previous uploads are ignored.
  */
 async function getDb() {
   if (db) return db;
 
   const engine = await getSQLEngine();
-
-  if (fs.existsSync(UPLOADED_DB_PATH)) {
-    db = new engine.Database(new Uint8Array(fs.readFileSync(UPLOADED_DB_PATH)));
-    dbMode = "uploaded";
-    return db;
-  }
 
   if (fs.existsSync(DEMO_DB_PATH)) {
     db = new engine.Database(new Uint8Array(fs.readFileSync(DEMO_DB_PATH)));
@@ -84,7 +73,6 @@ async function loadSQLiteFile(buffer) {
   db = new engine.Database(new Uint8Array(buffer));
 
   dbMode = "uploaded";
-  persist();
 
   return getDemoSchema();
 }
@@ -141,8 +129,6 @@ async function loadCSVFiles(csvFiles) {
     }
   }
 
-  persist();
-
   return getDemoSchema();
 }
 
@@ -154,7 +140,6 @@ async function loadSQLDump(sqlText) {
   db.run(sqlText);
 
   dbMode = "uploaded";
-  persist();
 
   return getDemoSchema();
 }
@@ -169,6 +154,7 @@ async function resetToDemo() {
     console.error("[sqliteService] Failed to remove uploaded database:", err.message);
   }
 
+  dbMode = "demo";
   if (fs.existsSync(DEMO_DB_PATH)) {
     db = new engine.Database(new Uint8Array(fs.readFileSync(DEMO_DB_PATH)));
   } else {
@@ -176,8 +162,6 @@ async function resetToDemo() {
     seedDemoData(db);
     persist();
   }
-
-  dbMode = "demo";
 
   return getDemoSchema();
 }

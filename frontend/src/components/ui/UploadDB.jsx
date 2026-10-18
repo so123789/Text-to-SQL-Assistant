@@ -4,8 +4,8 @@ import toast from "react-hot-toast";
 import { useSql } from "../../context/SqlContext";
 import "./UploadDB.css";
 
-export default function UploadDB({ onClose }) {
-  const { setSchema } = useSql();
+export default function UploadDB({ onClose, onInvestigate }) {
+  const { setSchema, setInvestigationCandidate } = useSql();
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadedInfo, setUploadedInfo] = useState(null);
@@ -22,11 +22,17 @@ export default function UploadDB({ onClose }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
 
+      const selectedFiles = Array.from(files);
+      const reusableCsv = selectedFiles.length === 1 && selectedFiles[0].name.toLowerCase().endsWith(".csv");
       setSchema(data.schema);
       setUploadedInfo({
         tables: Object.keys(data.schema).length,
         message: data.message,
+        reusableCsv,
       });
+      setInvestigationCandidate(
+        reusableCsv ? selectedFiles[0] : null,
+      );
       toast.success(data.message);
     } catch (err) {
       toast.error(err.message);
@@ -42,6 +48,7 @@ export default function UploadDB({ onClose }) {
       const data = await res.json();
       setSchema(data.schema);
       setUploadedInfo(null);
+      setInvestigationCandidate(null);
       toast.success("Back to demo database");
     } catch (err) {
       toast.error(err.message);
@@ -124,9 +131,16 @@ export default function UploadDB({ onClose }) {
               <RotateCcw size={13} /> Use Demo Database
             </button>
             {uploadedInfo && (
-              <button className="btn-done" onClick={onClose}>
-                Done — Start Querying
-              </button>
+              <div className="upload-action-group">
+                <button className="btn-done secondary" onClick={onClose}>
+                  Continue with SQL
+                </button>
+                {uploadedInfo.reusableCsv && (
+                  <button className="btn-done" onClick={onInvestigate}>
+                    Investigate this CSV
+                  </button>
+                )}
+              </div>
             )}
           </div>
 

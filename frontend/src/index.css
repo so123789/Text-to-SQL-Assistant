@@ -5,13 +5,13 @@
 }
 
 :root {
-  --bg-deep:    #0d0f14;
-  --bg-surface: #13161f;
-  --bg-raised:  #1a1e2a;
-  --bg-hover:   #222638;
+  --bg-deep:    #090b11;
+  --bg-surface: #11141d;
+  --bg-raised:  #191d29;
+  --bg-hover:   #222838;
 
-  --border:     #2a2f40;
-  --border-lit: #3d4460;
+  --border:     #252b3a;
+  --border-lit: #3a435a;
 
   --text-primary:   #e8eaf0;
   --text-secondary: #8b91a8;
@@ -28,9 +28,9 @@
   --font-ui:   "Inter", system-ui, sans-serif;
   --font-code: "IBM Plex Mono", "Courier New", monospace;
 
-  --radius-sm: 4px;
-  --radius:    8px;
-  --radius-lg: 12px;
+  --radius-sm: 6px;
+  --radius:    10px;
+  --radius-lg: 16px;
 
   color-scheme: dark;
 }

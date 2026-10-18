@@ -85,6 +85,7 @@
 .upload-success-text { font-weight: 500; color: var(--text-primary); }
 
 .upload-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.upload-action-group { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 
 .btn-reset-demo {
   display: flex; align-items: center; gap: 5px;
@@ -106,6 +107,8 @@
   transition: opacity 0.15s;
 }
 .btn-done:hover { opacity: 0.85; }
+.btn-done.secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-done.secondary:hover { color: var(--text-primary); border-color: var(--border-lit); }
 
 .upload-note {
   font-size: 11px;
